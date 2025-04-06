@@ -29,22 +29,15 @@ const SPOTIFY_SCOPES = [
 const CALLBACK_FUNCTION_NAME = 'authCallback';
 
 /**
- * Retrieves the Script Properties service for user properties.
- * @returns {GoogleAppsScript.Properties.Properties} The user properties store.
- */
-function getUserProperties_(): GoogleAppsScript.Properties.Properties {
-  return PropertiesService.getUserProperties();
-}
-
-/**
  * Gets the configured OAuth2 service for Spotify.
  * Throws an error if Spotify client ID or secret are not set.
  * @returns {GoogleAppsScriptOAuth2.OAuth2Service} The configured OAuth2 service.
  */
 export function getSpotifyService(): GoogleAppsScriptOAuth2.OAuth2Service {
-  const userProperties = getUserProperties_();
-  const clientId = userProperties.getProperty('SPOTIFY_CLIENT_ID');
-  const clientSecret = userProperties.getProperty('SPOTIFY_CLIENT_SECRET');
+  const userProperties = PropertiesService.getUserProperties();
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const clientId = scriptProperties.getProperty('SPOTIFY_CLIENT_ID');
+  const clientSecret = scriptProperties.getProperty('SPOTIFY_CLIENT_SECRET');
 
   if (!clientId || !clientSecret) {
     throw new Error(

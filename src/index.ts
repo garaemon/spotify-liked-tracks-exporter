@@ -24,24 +24,6 @@ import {
   getMySpotifyProfile,
 } from './spotify-service';
 
-// --- Configuration ---
-// IMPORTANT: Run this function once from the Apps Script editor
-//            to store your Spotify credentials securely.
-//            Replace 'YOUR_CLIENT_ID' and 'YOUR_CLIENT_SECRET'
-//            with the actual values from the Spotify Developer Dashboard.
-function setSpotifyCredentials(clientId: string, clientSecret: string): void {
-  PropertiesService.getUserProperties()
-    .setProperty('SPOTIFY_CLIENT_ID', clientId)
-    .setProperty('SPOTIFY_CLIENT_SECRET', clientSecret);
-  console.log('Spotify credentials set successfully.');
-  // It's good practice to reset the service if credentials change
-  try {
-    resetSpotifyService();
-  } catch (e) {
-    // Ignore error if service wasn't initialized yet
-  }
-}
-
 // --- Authorization ---
 
 /**
@@ -52,11 +34,15 @@ function setSpotifyCredentials(clientId: string, clientSecret: string): void {
 function authorizeSpotify(): void {
   const spotifyService = getSpotifyService();
   if (!spotifyService.hasAccess()) {
+    const redirectUrl = spotifyService.getRedirectUri();
+    console.log(
+      `Make sure that the callback Url on Spotify Web App is ${redirectUrl}`
+    );
     const authorizationUrl = spotifyService.getAuthorizationUrl();
     // Use console.log for server-side functions or simple scripts.
     // For UI-driven scripts (like Sheets add-ons), you might show this URL differently.
     console.log(
-      `Open the following URL to authorize: ${authorizationUrl}\nAfter authorizing, run logMySpotifyProfile() or other functions.`,
+      `Open the following URL to authorize: ${authorizationUrl}\nAfter authorizing, run logMySpotifyProfile() or other functions.`
     );
 
     // Alternatively, create a sidebar or dialog in a Sheet/Doc to show the link:
@@ -81,12 +67,12 @@ function resetSpotifyAuthorization(): void {
 /**
  * The OAuth2 callback function.
  * This function MUST be exposed globally to be callable by the OAuth2 library.
- * We achieve this by assigning it to the `global` object in TypeScript.
+ * We achieve this by assigning it to the `globalThis` object in TypeScript.
  * @param {object} request The request object passed by the OAuth2 library.
  * @returns {GoogleAppsScript.HTML.HtmlOutput} HTML output for the callback page.
  */
-(global as any).authCallback = (
-  request: object,
+(globalThis as any).authCallback = (
+  request: object
 ): GoogleAppsScript.HTML.HtmlOutput => {
   return handleAuthCallback(request);
 };
@@ -100,7 +86,7 @@ function resetSpotifyAuthorization(): void {
 function logMySpotifyProfile(): void {
   if (!isSpotifyAuthorized()) {
     console.error(
-      'Not authorized. Please run authorizeSpotify() first and follow the instructions.',
+      'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
     );
     // Optionally, call authorizeSpotify() directly here, but logging the URL is often safer
     // authorizeSpotify();
@@ -121,7 +107,6 @@ function logMySpotifyProfile(): void {
 
 // --- Expose functions to Apps Script Editor ---
 // These assignments make the functions visible and runnable directly from the Apps Script UI.
-(global as any).setSpotifyCredentials = setSpotifyCredentials;
-(global as any).authorizeSpotify = authorizeSpotify;
-(global as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
-(global as any).logMySpotifyProfile = logMySpotifyProfile;
+(globalThis as any).authorizeSpotify = authorizeSpotify;
+(globalThis as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
+(globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
