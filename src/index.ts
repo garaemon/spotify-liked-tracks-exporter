@@ -225,12 +225,12 @@ function saveLikedSongsToSheet(limit = 50): void {
       'Artists',
       'Album Name',
       'Track ID',
+      'Genres', // Move Genres before Track Link
       'Track Link',
-      'Genres', // Add new header for Genres
     ];
-    const data = savedTrackObjects.map(item => {
+    const data = savedTrackObjects.map((item) => {
       const track = item.track;
-      const artists = track.artists.map(artist => artist.name).join(', ');
+      const artists = track.artists.map((artist) => artist.name).join(', ');
       const trackLink = track.external_urls?.spotify || ''; // Get the Spotify URL
 
       // Collect genres for this track's artists
@@ -249,8 +249,8 @@ function saveLikedSongsToSheet(limit = 50): void {
         artists,
         track.album.name,
         track.id,
+        genresString, // Move genres before track link
         trackLink,
-        genresString, // Add the genres string to the row data
       ];
     });
 
