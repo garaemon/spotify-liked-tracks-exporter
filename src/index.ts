@@ -128,7 +128,7 @@ function logMyRecentLikedSongs(): void {
     console.log('Your 10 most recently liked songs:');
     tracks.forEach((item, index) => {
       const track = item.track;
-      const artists = track.artists.map((artist) => artist.name).join(', ');
+      const artists = track.artists.map(artist => artist.name).join(', ');
       console.log(
         `${index + 1}. ${track.name} - ${artists} (Album: ${track.album.name}) (Added: ${item.added_at})`
       );
