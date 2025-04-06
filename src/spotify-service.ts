@@ -232,15 +232,18 @@ export function getArtistsDetails(artistIds: string[]): SpotifyArtist[] | null {
   }
   // Spotify API allows up to 50 IDs per request
   if (artistIds.length > 50) {
-    console.warn('Fetching details for more than 50 artists, only the first 50 will be fetched.');
+    console.warn(
+      'Fetching details for more than 50 artists, only the first 50 will be fetched.'
+    );
     artistIds = artistIds.slice(0, 50);
   }
 
   const idsParam = artistIds.join(',');
-  const response = fetchSpotifyApi<SpotifyArtistsResponse>(`artists?ids=${idsParam}`);
+  const response = fetchSpotifyApi<SpotifyArtistsResponse>(
+    `artists?ids=${idsParam}`
+  );
   return response ? response.artists : null;
 }
-
 
 /**
  * Fetches the current user's recently saved (liked) tracks from Spotify.
