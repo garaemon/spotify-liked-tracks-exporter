@@ -221,6 +221,7 @@ function saveLikedSongsToSheet(limit = 50): void {
     // Prepare data for the sheet
     const header = [
       'Added At',
+      'Release Date', // Add Release Date header
       'Track Name',
       'Artists',
       'Album Name',
@@ -235,16 +236,18 @@ function saveLikedSongsToSheet(limit = 50): void {
 
       // Collect genres for this track's artists
       const trackGenres = new Set<string>();
-      track.artists.forEach(artist => {
+      track.artists.forEach((artist) => {
         const genres = artistGenresMap.get(artist.id);
         if (genres) {
-          genres.forEach(genre => trackGenres.add(genre));
+          genres.forEach((genre) => trackGenres.add(genre));
         }
       });
       const genresString = Array.from(trackGenres).join(', '); // Combine genres
+      const releaseDate = track.album?.release_date || ''; // Get the release date
 
       return [
         item.added_at,
+        releaseDate, // Add release date data
         track.name,
         artists,
         track.album.name,

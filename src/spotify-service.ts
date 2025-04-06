@@ -176,7 +176,10 @@ interface SpotifyArtist {
 
 interface SpotifyAlbum {
   name: string;
+  release_date: string; // e.g., "1981-12" or "1981-12-15"
+  release_date_precision: 'year' | 'month' | 'day'; // Granularity of the release date
   // Add other album fields if needed
+  // https://developer.spotify.com/documentation/web-api/reference/get-an-album
 }
 
 interface SpotifyExternalUrls {
