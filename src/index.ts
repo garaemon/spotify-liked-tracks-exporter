@@ -173,13 +173,14 @@ function saveLikedSongsToSheet(limit = 50): void {
   const artistIds = new Set<string>();
   savedTrackObjects.forEach(item => {
     item.track.artists.forEach(artist => {
-      if (artist.id) { // Ensure artist object has an ID
+      if (artist.id) {
+        // Ensure artist object has an ID
         artistIds.add(artist.id);
       }
     });
   });
 
-  let artistGenresMap: Map<string, string[]> = new Map();
+  const artistGenresMap: Map<string, string[]> = new Map();
   if (artistIds.size > 0) {
     console.log(`Fetching genres for ${artistIds.size} unique artists...`);
     // Convert Set to array and fetch details
@@ -190,7 +191,9 @@ function saveLikedSongsToSheet(limit = 50): void {
           artistGenresMap.set(artist.id, artist.genres);
         }
       });
-      console.log(`Successfully fetched details for ${artistGenresMap.size} artists.`);
+      console.log(
+        `Successfully fetched details for ${artistGenresMap.size} artists.`
+      );
     } else {
       console.error('Failed to fetch artist details.');
       // Continue without genre information or handle error as needed
@@ -231,7 +234,7 @@ function saveLikedSongsToSheet(limit = 50): void {
       const trackLink = track.external_urls?.spotify || ''; // Get the Spotify URL
 
       // Collect genres for this track's artists
-      let trackGenres = new Set<string>();
+      const trackGenres = new Set<string>();
       track.artists.forEach(artist => {
         const genres = artistGenresMap.get(artist.id);
         if (genres) {
