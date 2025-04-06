@@ -200,10 +200,6 @@ function saveLikedSongsToSheet(limit = 50): void {
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-  }
-
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) {
       console.error(
         'No active spreadsheet found. Please open or create a spreadsheet.'
