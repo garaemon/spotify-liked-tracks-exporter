@@ -163,16 +163,27 @@ interface SpotifyUserProfile {
   id: string;
   // Add other fields as needed from the Spotify API documentation
   // https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile
+  // https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile
 }
 
 interface SpotifyArtist {
+  id: string; // Artist ID is needed to fetch genres
   name: string;
+  genres?: string[]; // Genres associated with the artist (optional)
   // Add other artist fields if needed
+  // https://developer.spotify.com/documentation/web-api/reference/get-artist
 }
 
 interface SpotifyAlbum {
   name: string;
+  release_date: string; // e.g., "1981-12" or "1981-12-15"
+  release_date_precision: 'year' | 'month' | 'day'; // Granularity of the release date
   // Add other album fields if needed
+  // https://developer.spotify.com/documentation/web-api/reference/get-an-album
+}
+
+interface SpotifyExternalUrls {
+  spotify: string; // The Spotify URL for the object.
 }
 
 interface SpotifyTrack {
@@ -180,6 +191,7 @@ interface SpotifyTrack {
   name: string;
   artists: SpotifyArtist[];
   album: SpotifyAlbum;
+  external_urls: SpotifyExternalUrls; // Add external URLs containing the track link
   // Add other track fields if needed
   // https://developer.spotify.com/documentation/web-api/reference/get-users-saved-tracks
 }
@@ -205,6 +217,35 @@ interface SpotifySavedTracksResponse {
  */
 export function getMySpotifyProfile(): SpotifyUserProfile | null {
   return fetchSpotifyApi<SpotifyUserProfile>('me');
+}
+
+// Response structure for the /v1/artists endpoint (plural)
+interface SpotifyArtistsResponse {
+  artists: SpotifyArtist[];
+}
+
+/**
+ * Fetches details for multiple artists by their IDs.
+ * @param {string[]} artistIds An array of Spotify Artist IDs (max 50 per request).
+ * @returns {SpotifyArtist[] | null} An array of artist objects with details, or null on failure.
+ */
+export function getArtistsDetails(artistIds: string[]): SpotifyArtist[] | null {
+  if (!artistIds || artistIds.length === 0) {
+    return []; // Return empty array if no IDs are provided
+  }
+  // Spotify API allows up to 50 IDs per request
+  if (artistIds.length > 50) {
+    console.warn(
+      'Fetching details for more than 50 artists, only the first 50 will be fetched.'
+    );
+    artistIds = artistIds.slice(0, 50);
+  }
+
+  const idsParam = artistIds.join(',');
+  const response = fetchSpotifyApi<SpotifyArtistsResponse>(
+    `artists?ids=${idsParam}`
+  );
+  return response ? response.artists : null;
 }
 
 /**

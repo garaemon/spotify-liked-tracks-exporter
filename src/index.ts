@@ -22,7 +22,8 @@ import {
   resetSpotifyService,
   isSpotifyAuthorized,
   getMySpotifyProfile,
-  getMySavedTracks, // Import the new function
+  getMySavedTracks,
+  getArtistsDetails, // Import the new function to get artist details
 } from './spotify-service';
 
 // --- Authorization ---
@@ -155,17 +156,50 @@ function saveLikedSongsToSheet(limit = 50): void {
   const validLimit = Math.max(1, Math.min(50, limit));
 
   console.log(`Fetching ${validLimit} recent liked songs...`);
-  const tracks = getMySavedTracks(validLimit);
+  const savedTrackObjects = getMySavedTracks(validLimit);
 
-  if (!tracks) {
+  if (!savedTrackObjects) {
     console.error('Failed to fetch liked songs.');
     return;
   }
 
-  if (tracks.length === 0) {
+  if (savedTrackObjects.length === 0) {
     console.log('No liked songs found to save.');
     return;
   }
+
+  // --- Fetch Artist Genres ---
+  // Collect unique artist IDs from all tracks
+  const artistIds = new Set<string>();
+  savedTrackObjects.forEach(item => {
+    item.track.artists.forEach(artist => {
+      if (artist.id) {
+        // Ensure artist object has an ID
+        artistIds.add(artist.id);
+      }
+    });
+  });
+
+  const artistGenresMap: Map<string, string[]> = new Map();
+  if (artistIds.size > 0) {
+    console.log(`Fetching genres for ${artistIds.size} unique artists...`);
+    // Convert Set to array and fetch details
+    const artistsDetails = getArtistsDetails(Array.from(artistIds));
+    if (artistsDetails) {
+      artistsDetails.forEach(artist => {
+        if (artist && artist.id && artist.genres) {
+          artistGenresMap.set(artist.id, artist.genres);
+        }
+      });
+      console.log(
+        `Successfully fetched details for ${artistGenresMap.size} artists.`
+      );
+    } else {
+      console.error('Failed to fetch artist details.');
+      // Continue without genre information or handle error as needed
+    }
+  }
+  // --- End Fetch Artist Genres ---
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -187,15 +221,40 @@ function saveLikedSongsToSheet(limit = 50): void {
     // Prepare data for the sheet
     const header = [
       'Added At',
+      'Release Date', // Add Release Date header
       'Track Name',
       'Artists',
       'Album Name',
       'Track ID',
+      'Genres', // Move Genres before Track Link
+      'Track Link',
     ];
-    const data = tracks.map(item => {
+    const data = savedTrackObjects.map(item => {
       const track = item.track;
       const artists = track.artists.map(artist => artist.name).join(', ');
-      return [item.added_at, track.name, artists, track.album.name, track.id];
+      const trackLink = track.external_urls?.spotify || ''; // Get the Spotify URL
+
+      // Collect genres for this track's artists
+      const trackGenres = new Set<string>();
+      track.artists.forEach(artist => {
+        const genres = artistGenresMap.get(artist.id);
+        if (genres) {
+          genres.forEach(genre => trackGenres.add(genre));
+        }
+      });
+      const genresString = Array.from(trackGenres).join(', '); // Combine genres
+      const releaseDate = track.album?.release_date || ''; // Get the release date
+
+      return [
+        item.added_at,
+        releaseDate, // Add release date data
+        track.name,
+        artists,
+        track.album.name,
+        track.id,
+        genresString, // Move genres before track link
+        trackLink,
+      ];
     });
 
     // Clear existing content and write new data
@@ -204,7 +263,7 @@ function saveLikedSongsToSheet(limit = 50): void {
     range.setValues([header, ...data]);
 
     console.log(
-      `Successfully saved ${tracks.length} liked songs to sheet "${sheetName}".`
+      `Successfully saved ${savedTrackObjects.length} liked songs (with genre info for ${artistGenresMap.size} artists) to sheet "${sheetName}".`
     );
   } catch (e: any) {
     console.error(`Error saving songs to sheet: ${e.message || e}`);
