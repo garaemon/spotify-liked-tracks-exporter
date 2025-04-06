@@ -175,11 +175,16 @@ interface SpotifyAlbum {
   // Add other album fields if needed
 }
 
+interface SpotifyExternalUrls {
+  spotify: string; // The Spotify URL for the object.
+}
+
 interface SpotifyTrack {
   id: string;
   name: string;
   artists: SpotifyArtist[];
   album: SpotifyAlbum;
+  external_urls: SpotifyExternalUrls; // Add external URLs containing the track link
   // Add other track fields if needed
   // https://developer.spotify.com/documentation/web-api/reference/get-users-saved-tracks
 }
