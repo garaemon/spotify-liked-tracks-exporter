@@ -192,16 +192,10 @@ function saveLikedSongsToSheet(limit = 50): void {
       'Album Name',
       'Track ID',
     ];
-    const data = tracks.map((item) => {
+    const data = tracks.map(item => {
       const track = item.track;
-      const artists = track.artists.map((artist) => artist.name).join(', ');
-      return [
-        item.added_at,
-        track.name,
-        artists,
-        track.album.name,
-        track.id,
-      ];
+      const artists = track.artists.map(artist => artist.name).join(', ');
+      return [item.added_at, track.name, artists, track.album.name, track.id];
     });
 
     // Clear existing content and write new data
