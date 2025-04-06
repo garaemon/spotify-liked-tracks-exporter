@@ -18,5 +18,9 @@
   ],
   "executionApi": {
     "access": "ANYONE"
+  },
+  "webApp": {
+    "executeAs": "USER_ACCESSING",
+    "access": "ANYONE"
   }
 }
