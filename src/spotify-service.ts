@@ -301,7 +301,7 @@ export function getAllMySavedTracks(): SpotifySavedTrackObject[] | null {
         nextUrl = pageData.next; // Get the URL for the next page
         // Optional: Add a small delay to avoid hitting rate limits aggressively
         if (nextUrl) {
-           Utilities.sleep(200); // Sleep for 200 milliseconds
+          Utilities.sleep(200); // Sleep for 200 milliseconds
         }
       } catch (e) {
         console.error(
@@ -316,10 +316,12 @@ export function getAllMySavedTracks(): SpotifySavedTrackObject[] | null {
       resetSpotifyService();
       return null; // Stop fetching on auth error
     } else if (responseCode === 429) {
-        // Rate limit hit, wait and retry might be complex in Apps Script. Log and stop for now.
-        console.error(`Spotify API Rate Limit Hit: ${responseCode} ${responseBody}. Please try again later.`);
-        // Implement backoff strategy if needed
-        return null;
+      // Rate limit hit, wait and retry might be complex in Apps Script. Log and stop for now.
+      console.error(
+        `Spotify API Rate Limit Hit: ${responseCode} ${responseBody}. Please try again later.`
+      );
+      // Implement backoff strategy if needed
+      return null;
     } else {
       console.error(
         `Spotify API Error during pagination: ${responseCode} ${responseBody}`

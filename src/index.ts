@@ -144,7 +144,8 @@ function logMyRecentLikedSongs(): void {
  * Creates a sheet named "Spotify Liked Songs" if it doesn't exist.
  * Overwrites existing data in the sheet with *all* liked songs.
  */
-function saveLikedSongsToSheet(): void { // Remove limit parameter
+function saveLikedSongsToSheet(): void {
+  // Remove limit parameter
   if (!isSpotifyAuthorized()) {
     console.error(
       'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
@@ -156,7 +157,8 @@ function saveLikedSongsToSheet(): void { // Remove limit parameter
   console.log('Fetching all liked songs from Spotify...');
   const savedTrackObjects = getAllMySavedTracks();
 
-  if (savedTrackObjects === null) { // Check for null explicitly as empty array is valid
+  if (savedTrackObjects === null) {
+    // Check for null explicitly as empty array is valid
     console.error('Failed to fetch liked songs.');
     return;
   }
@@ -195,7 +197,7 @@ function saveLikedSongsToSheet(): void { // Remove limit parameter
       );
       const artistsDetails = getArtistsDetails(chunk);
       if (artistsDetails) {
-        artistsDetails.forEach((artist) => {
+        artistsDetails.forEach(artist => {
           if (artist && artist.id && artist.genres) {
             artistGenresMap.set(artist.id, artist.genres);
             fetchedArtistCount++;
@@ -203,7 +205,7 @@ function saveLikedSongsToSheet(): void { // Remove limit parameter
         });
         // Optional delay between chunks if needed
         if (i + chunkSize < uniqueArtistIds.length) {
-           Utilities.sleep(200);
+          Utilities.sleep(200);
         }
       } else {
         console.error(
