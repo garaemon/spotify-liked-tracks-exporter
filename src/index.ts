@@ -22,8 +22,9 @@ import {
   resetSpotifyService,
   isSpotifyAuthorized,
   getMySpotifyProfile,
-  getMySavedTracks,
-  getArtistsDetails, // Import the new function to get artist details
+  getMySavedTracks, // Keep for logMyRecentLikedSongs
+  getAllMySavedTracks, // Import the new function for all tracks
+  getArtistsDetails,
 } from './spotify-service';
 
 // --- Authorization ---
@@ -141,10 +142,9 @@ function logMyRecentLikedSongs(): void {
 /**
  * Saves the user's most recently liked songs from Spotify to a Google Sheet.
  * Creates a sheet named "Spotify Liked Songs" if it doesn't exist.
- * Overwrites existing data in the sheet.
- * @param {number} [limit=50] The maximum number of recent songs to fetch and save (1-50). Defaults to 50.
+ * Overwrites existing data in the sheet with *all* liked songs.
  */
-function saveLikedSongsToSheet(limit = 50): void {
+function saveLikedSongsToSheet(): void { // Remove limit parameter
   if (!isSpotifyAuthorized()) {
     console.error(
       'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
@@ -152,13 +152,11 @@ function saveLikedSongsToSheet(limit = 50): void {
     return;
   }
 
-  // Ensure limit is valid for the API call
-  const validLimit = Math.max(1, Math.min(50, limit));
+  // Fetch ALL saved tracks using the new paginated function
+  console.log('Fetching all liked songs from Spotify...');
+  const savedTrackObjects = getAllMySavedTracks();
 
-  console.log(`Fetching ${validLimit} recent liked songs...`);
-  const savedTrackObjects = getMySavedTracks(validLimit);
-
-  if (!savedTrackObjects) {
+  if (savedTrackObjects === null) { // Check for null explicitly as empty array is valid
     console.error('Failed to fetch liked songs.');
     return;
   }
@@ -181,23 +179,42 @@ function saveLikedSongsToSheet(limit = 50): void {
   });
 
   const artistGenresMap: Map<string, string[]> = new Map();
-  if (artistIds.size > 0) {
-    console.log(`Fetching genres for ${artistIds.size} unique artists...`);
-    // Convert Set to array and fetch details
-    const artistsDetails = getArtistsDetails(Array.from(artistIds));
-    if (artistsDetails) {
-      artistsDetails.forEach(artist => {
-        if (artist && artist.id && artist.genres) {
-          artistGenresMap.set(artist.id, artist.genres);
-        }
-      });
+  const uniqueArtistIds = Array.from(artistIds); // Convert Set to Array
+
+  if (uniqueArtistIds.length > 0) {
+    console.log(
+      `Fetching genres for ${uniqueArtistIds.length} unique artists...`
+    );
+    const chunkSize = 50; // Spotify API limit for /artists endpoint
+    let fetchedArtistCount = 0;
+
+    for (let i = 0; i < uniqueArtistIds.length; i += chunkSize) {
+      const chunk = uniqueArtistIds.slice(i, i + chunkSize);
       console.log(
-        `Successfully fetched details for ${artistGenresMap.size} artists.`
+        `Fetching artist details batch ${i / chunkSize + 1} (Artists ${i + 1}-${Math.min(i + chunkSize, uniqueArtistIds.length)})...`
       );
-    } else {
-      console.error('Failed to fetch artist details.');
-      // Continue without genre information or handle error as needed
+      const artistsDetails = getArtistsDetails(chunk);
+      if (artistsDetails) {
+        artistsDetails.forEach((artist) => {
+          if (artist && artist.id && artist.genres) {
+            artistGenresMap.set(artist.id, artist.genres);
+            fetchedArtistCount++;
+          }
+        });
+        // Optional delay between chunks if needed
+        if (i + chunkSize < uniqueArtistIds.length) {
+           Utilities.sleep(200);
+        }
+      } else {
+        console.error(
+          `Failed to fetch artist details for batch starting at index ${i}. Skipping batch.`
+        );
+        // Decide if you want to stop the whole process or just skip the batch
+      }
     }
+    console.log(
+      `Successfully fetched genre details for ${fetchedArtistCount} artists.`
+    );
   }
   // --- End Fetch Artist Genres ---
 
@@ -276,4 +293,4 @@ function saveLikedSongsToSheet(limit = 50): void {
 (globalThis as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
 (globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs;
-(globalThis as any).saveLikedSongsToSheet = saveLikedSongsToSheet; // Expose the new function
+(globalThis as any).saveLikedSongsToSheet = saveLikedSongsToSheet;
