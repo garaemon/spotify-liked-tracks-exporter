@@ -137,9 +137,84 @@ function logMyRecentLikedSongs(): void {
   }
 }
 
+/**
+ * Saves the user's most recently liked songs from Spotify to a Google Sheet.
+ * Creates a sheet named "Spotify Liked Songs" if it doesn't exist.
+ * Overwrites existing data in the sheet.
+ * @param {number} [limit=50] The maximum number of recent songs to fetch and save (1-50). Defaults to 50.
+ */
+function saveLikedSongsToSheet(limit = 50): void {
+  if (!isSpotifyAuthorized()) {
+    console.error(
+      'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
+    );
+    return;
+  }
+
+  // Ensure limit is valid for the API call
+  const validLimit = Math.max(1, Math.min(50, limit));
+
+  console.log(`Fetching ${validLimit} recent liked songs...`);
+  const tracks = getMySavedTracks(validLimit);
+
+  if (!tracks) {
+    console.error('Failed to fetch liked songs.');
+    return;
+  }
+
+  if (tracks.length === 0) {
+    console.log('No liked songs found to save.');
+    return;
+  }
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) {
+      console.error(
+        'No active spreadsheet found. Please open or create a spreadsheet.'
+      );
+      return;
+    }
+    const sheetName = 'Spotify Liked Songs';
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      console.log(`Created sheet: "${sheetName}"`);
+    } else {
+      console.log(`Using existing sheet: "${sheetName}"`);
+    }
+
+    // Prepare data for the sheet
+    const header = [
+      'Added At',
+      'Track Name',
+      'Artists',
+      'Album Name',
+      'Track ID',
+    ];
+    const data = tracks.map(item => {
+      const track = item.track;
+      const artists = track.artists.map(artist => artist.name).join(', ');
+      return [item.added_at, track.name, artists, track.album.name, track.id];
+    });
+
+    // Clear existing content and write new data
+    sheet.clearContents();
+    const range = sheet.getRange(1, 1, data.length + 1, header.length); // +1 for header row
+    range.setValues([header, ...data]);
+
+    console.log(
+      `Successfully saved ${tracks.length} liked songs to sheet "${sheetName}".`
+    );
+  } catch (e: any) {
+    console.error(`Error saving songs to sheet: ${e.message || e}`);
+  }
+}
+
 // --- Expose functions to Apps Script Editor ---
 // These assignments make the functions visible and runnable directly from the Apps Script UI.
 (globalThis as any).authorizeSpotify = authorizeSpotify;
 (globalThis as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
-(globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs; // Expose the new function
+(globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs;
+(globalThis as any).saveLikedSongsToSheet = saveLikedSongsToSheet; // Expose the new function

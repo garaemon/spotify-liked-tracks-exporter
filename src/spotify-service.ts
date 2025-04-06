@@ -212,9 +212,7 @@ export function getMySpotifyProfile(): SpotifyUserProfile | null {
  * @param {number} [limit=10] The maximum number of tracks to retrieve (1-50). Defaults to 10.
  * @returns {SpotifySavedTrackObject[] | null} An array of saved track objects or null on failure.
  */
-export function getMySavedTracks(
-  limit = 10
-): SpotifySavedTrackObject[] | null {
+export function getMySavedTracks(limit = 10): SpotifySavedTrackObject[] | null {
   // Ensure limit is within Spotify's allowed range (1-50)
   const validLimit = Math.max(1, Math.min(50, limit));
   const response = fetchSpotifyApi<SpotifySavedTracksResponse>(
