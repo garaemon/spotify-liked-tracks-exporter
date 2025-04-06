@@ -193,9 +193,9 @@ function saveLikedSongsToSheet(limit = 50): void {
       'Track ID',
       'Track Link', // Add new header for the link
     ];
-    const data = tracks.map((item) => {
+    const data = tracks.map(item => {
       const track = item.track;
-      const artists = track.artists.map((artist) => artist.name).join(', ');
+      const artists = track.artists.map(artist => artist.name).join(', ');
       const trackLink = track.external_urls?.spotify || ''; // Get the Spotify URL
       return [
         item.added_at,
