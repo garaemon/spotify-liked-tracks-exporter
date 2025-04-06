@@ -22,7 +22,8 @@
 const SPOTIFY_SCOPES = [
   'user-read-private',
   'user-read-email',
-  // Add other scopes like 'playlist-read-private', 'user-library-read', etc.
+  'user-library-read', // Add scope to read user's saved tracks
+  // Add other scopes like 'playlist-read-private', etc.
 ].join(' ');
 
 // Callback function name must match the one registered globally
@@ -164,10 +165,60 @@ interface SpotifyUserProfile {
   // https://developer.spotify.com/documentation/web-api/reference/get-current-users-profile
 }
 
+interface SpotifyArtist {
+  name: string;
+  // Add other artist fields if needed
+}
+
+interface SpotifyAlbum {
+  name: string;
+  // Add other album fields if needed
+}
+
+interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+  // Add other track fields if needed
+  // https://developer.spotify.com/documentation/web-api/reference/get-users-saved-tracks
+}
+
+interface SpotifySavedTrackObject {
+  added_at: string; // Timestamp when the track was saved
+  track: SpotifyTrack;
+}
+
+interface SpotifySavedTracksResponse {
+  href: string;
+  items: SpotifySavedTrackObject[];
+  limit: number;
+  next: string | null;
+  offset: number;
+  previous: string | null;
+  total: number;
+}
+
 /**
  * Fetches the current user's Spotify profile.
  * @returns {SpotifyUserProfile | null} The user profile object or null on failure.
  */
 export function getMySpotifyProfile(): SpotifyUserProfile | null {
   return fetchSpotifyApi<SpotifyUserProfile>('me');
+}
+
+/**
+ * Fetches the current user's recently saved (liked) tracks from Spotify.
+ * @param {number} [limit=10] The maximum number of tracks to retrieve (1-50). Defaults to 10.
+ * @returns {SpotifySavedTrackObject[] | null} An array of saved track objects or null on failure.
+ */
+export function getMySavedTracks(
+  limit = 10
+): SpotifySavedTrackObject[] | null {
+  // Ensure limit is within Spotify's allowed range (1-50)
+  const validLimit = Math.max(1, Math.min(50, limit));
+  const response = fetchSpotifyApi<SpotifySavedTracksResponse>(
+    `me/tracks?limit=${validLimit}`
+  );
+  return response ? response.items : null;
 }
