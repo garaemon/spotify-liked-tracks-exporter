@@ -22,6 +22,7 @@ import {
   resetSpotifyService,
   isSpotifyAuthorized,
   getMySpotifyProfile,
+  getMySavedTracks, // Import the new function
 } from './spotify-service';
 
 // --- Authorization ---
@@ -105,8 +106,40 @@ function logMySpotifyProfile(): void {
   }
 }
 
+/**
+ * Logs the user's 10 most recently liked songs on Spotify.
+ * Run this function from the Apps Script editor after authorizing.
+ */
+function logMyRecentLikedSongs(): void {
+  if (!isSpotifyAuthorized()) {
+    console.error(
+      'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
+    );
+    return;
+  }
+
+  console.log('Fetching recent liked songs...');
+  const tracks = getMySavedTracks(10); // Get the 10 most recent tracks
+
+  if (tracks && tracks.length > 0) {
+    console.log('Your 10 most recently liked songs:');
+    tracks.forEach((item, index) => {
+      const track = item.track;
+      const artists = track.artists.map(artist => artist.name).join(', ');
+      console.log(
+        `${index + 1}. ${track.name} - ${artists} (Album: ${track.album.name}) (Added: ${item.added_at})`
+      );
+    });
+  } else if (tracks) {
+    console.log('No liked songs found.');
+  } else {
+    console.error('Failed to fetch liked songs.');
+  }
+}
+
 // --- Expose functions to Apps Script Editor ---
 // These assignments make the functions visible and runnable directly from the Apps Script UI.
 (globalThis as any).authorizeSpotify = authorizeSpotify;
 (globalThis as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
+(globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs; // Expose the new function
