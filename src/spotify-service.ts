@@ -48,7 +48,7 @@ export function getSpotifyService(): GoogleAppsScriptOAuth2.OAuth2Service {
 
   if (!clientId || !clientSecret) {
     throw new Error(
-      'Spotify Client ID or Client Secret not set. Please run setSpotifyCredentials(clientId, clientSecret) first.',
+      'Spotify Client ID or Client Secret not set. Please run setSpotifyCredentials(clientId, clientSecret) first.'
     );
   }
 
@@ -73,7 +73,7 @@ export function getSpotifyService(): GoogleAppsScriptOAuth2.OAuth2Service {
  * @returns {GoogleAppsScript.HTML.HtmlOutput} HTML output indicating success or failure.
  */
 export function handleAuthCallback(
-  request: object,
+  request: object
 ): GoogleAppsScript.HTML.HtmlOutput {
   const spotifyService = getSpotifyService();
   const authorized = spotifyService.handleCallback(request);
@@ -114,7 +114,7 @@ export function isSpotifyAuthorized(): boolean {
  */
 export function fetchSpotifyApi<T>(
   endpoint: string,
-  options?: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions,
+  options?: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions
 ): T | null {
   const service = getSpotifyService();
   if (!service.hasAccess()) {
@@ -143,12 +143,16 @@ export function fetchSpotifyApi<T>(
     try {
       return JSON.parse(responseBody) as T;
     } catch (e) {
-      console.error(`Failed to parse Spotify response: ${e}\nResponse: ${responseBody}`);
+      console.error(
+        `Failed to parse Spotify response: ${e}\nResponse: ${responseBody}`
+      );
       return null;
     }
   } else if (responseCode === 401) {
     // Token might have expired or been revoked
-    console.error(`Spotify API Error (Unauthorized): ${responseCode} ${responseBody}`);
+    console.error(
+      `Spotify API Error (Unauthorized): ${responseCode} ${responseBody}`
+    );
     resetSpotifyService(); // Reset service to force re-auth next time
     return null;
   } else {
