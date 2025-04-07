@@ -263,7 +263,96 @@ export function getMySavedTracks(limit = 10): SpotifySavedTrackObject[] | null {
 }
 
 /**
+ * Fetches newly saved (liked) tracks since the last known track.
+ * Stops fetching when it encounters a track ID present in the provided set.
+ * @param {Set<string>} existingTrackIds A set of track IDs already known (e.g., from the sheet).
+ * @returns {SpotifySavedTrackObject[] | null} An array of newly saved track objects or null on failure.
+ */
+export function getNewSavedTracks(
+  existingTrackIds: Set<string>
+): SpotifySavedTrackObject[] | null {
+  const newTracks: SpotifySavedTrackObject[] = [];
+  let nextUrl: string | null = `https://api.spotify.com/v1/me/tracks?limit=50`; // Start with the initial endpoint
+  let foundExistingTrack = false;
+
+  console.log('Fetching new saved tracks since last update...');
+
+  while (nextUrl && !foundExistingTrack) {
+    const service = getSpotifyService();
+    if (!service.hasAccess()) {
+      console.error('Not authorized with Spotify during pagination.');
+      return null;
+    }
+
+    const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      headers: {
+        Authorization: `Bearer ${service.getAccessToken()}`,
+      },
+      method: 'get',
+      muteHttpExceptions: true,
+    };
+
+    console.log(`Fetching page: ${nextUrl}`);
+    const response = UrlFetchApp.fetch(nextUrl, requestOptions);
+    const responseCode = response.getResponseCode();
+    const responseBody = response.getContentText();
+
+    if (responseCode === 200) {
+      try {
+        const pageData = JSON.parse(responseBody) as SpotifySavedTracksResponse;
+        if (pageData.items) {
+          for (const item of pageData.items) {
+            if (existingTrackIds.has(item.track.id)) {
+              // Found a track that's already in the sheet. Stop processing.
+              console.log(
+                `Found existing track ID ${item.track.id}. Stopping fetch.`
+              );
+              foundExistingTrack = true;
+              break; // Stop processing items on this page
+            }
+            // If track is not in the existing set, add it to newTracks
+            newTracks.push(item);
+          }
+        }
+        // Only continue if we haven't found an existing track yet
+        nextUrl = foundExistingTrack ? null : pageData.next;
+
+        // Optional delay
+        if (nextUrl) {
+          Utilities.sleep(200);
+        }
+      } catch (e) {
+        console.error(
+          `Failed to parse Spotify response during pagination: ${e}\nResponse: ${responseBody}`
+        );
+        return null;
+      }
+    } else if (responseCode === 401) {
+      console.error(
+        `Spotify API Error (Unauthorized) during pagination: ${responseCode} ${responseBody}`
+      );
+      resetSpotifyService();
+      return null;
+    } else if (responseCode === 429) {
+      console.error(
+        `Spotify API Rate Limit Hit: ${responseCode} ${responseBody}. Please try again later.`
+      );
+      return null;
+    } else {
+      console.error(
+        `Spotify API Error during pagination: ${responseCode} ${responseBody}`
+      );
+      return null;
+    }
+  }
+
+  console.log(`Finished fetching. Found ${newTracks.length} new tracks.`);
+  return newTracks;
+}
+
+/**
  * Fetches *all* of the current user's saved (liked) tracks from Spotify by handling pagination.
+ * Note: This fetches everything, regardless of what's in the sheet. Use getNewSavedTracks for updates.
  * @returns {SpotifySavedTrackObject[] | null} An array of all saved track objects or null on failure.
  */
 export function getAllMySavedTracks(): SpotifySavedTrackObject[] | null {
