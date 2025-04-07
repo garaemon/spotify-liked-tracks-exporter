@@ -140,12 +140,11 @@ function logMyRecentLikedSongs(): void {
 }
 
 /**
- * Saves the user's most recently liked songs from Spotify to a Google Sheet.
+ * Updates a Google Sheet with the user's liked songs from Spotify.
  * Creates a sheet named "Spotify Liked Songs" if it doesn't exist.
- * Overwrites existing data in the sheet with *all* liked songs.
+ * Appends only the newly liked songs since the last update.
  */
-function saveLikedSongsToSheet(): void {
-  // Remove limit parameter
+function updateLikedSongsSheet(): void {
   if (!isSpotifyAuthorized()) {
     console.error(
       'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
@@ -153,25 +152,84 @@ function saveLikedSongsToSheet(): void {
     return;
   }
 
-  // Fetch ALL saved tracks using the new paginated function
-  console.log('Fetching all liked songs from Spotify...');
-  const savedTrackObjects = getAllMySavedTracks();
+  // --- Get Existing Track IDs from Sheet ---
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    console.error(
+      'No active spreadsheet found. Please open or create a spreadsheet.'
+    );
+    return;
+  }
+  const sheetName = 'Spotify Liked Songs';
+  let sheet = ss.getSheetByName(sheetName);
+  const existingTrackIds = new Set<string>();
+  const header = [
+    'Added At',
+    'Release Date',
+    'Track Name',
+    'Artists',
+    'Album Name',
+    'Track ID',
+    'Genres',
+    'Track Link',
+  ];
+  let lastRow = 0;
 
-  if (savedTrackObjects === null) {
+  if (sheet) {
+    console.log(`Reading existing tracks from sheet: "${sheetName}"`);
+    const data = sheet.getDataRange().getValues();
+    lastRow = data.length; // Get the last row number
+    if (lastRow > 1) { // Check if there's data beyond the header
+      const trackIdColumnIndex = header.indexOf('Track ID'); // Find the index of the Track ID column
+      if (trackIdColumnIndex !== -1) {
+        // Start from 1 to skip header row
+        for (let i = 1; i < data.length; i++) {
+          if (data[i] && data[i][trackIdColumnIndex]) {
+            existingTrackIds.add(data[i][trackIdColumnIndex].toString());
+          }
+        }
+        console.log(`Found ${existingTrackIds.size} existing track IDs in the sheet.`);
+      } else {
+        console.warn('Could not find "Track ID" column in the sheet. Assuming no existing tracks.');
+      }
+    } else {
+      console.log('Sheet exists but is empty or only has a header.');
+    }
+  } else {
+    console.log(`Sheet "${sheetName}" not found. It will be created.`);
+    // Sheet will be created later if new tracks are found
+  }
+
+  // --- Fetch All Liked Songs from Spotify ---
+  console.log('Fetching all liked songs from Spotify...');
+  const allSavedTrackObjects = getAllMySavedTracks();
+
+  if (allSavedTrackObjects === null) {
     // Check for null explicitly as empty array is valid
     console.error('Failed to fetch liked songs.');
     return;
   }
 
-  if (savedTrackObjects.length === 0) {
-    console.log('No liked songs found to save.');
+  if (allSavedTrackObjects.length === 0) {
+    console.log('No liked songs found on Spotify.');
     return;
   }
 
-  // --- Fetch Artist Genres ---
-  // Collect unique artist IDs from all tracks
+  // --- Filter for New Tracks ---
+  const newTracks = allSavedTrackObjects.filter(
+    item => !existingTrackIds.has(item.track.id)
+  );
+
+  if (newTracks.length === 0) {
+    console.log('No new liked songs found since the last update.');
+    return;
+  }
+
+  console.log(`Found ${newTracks.length} new liked songs to add.`);
+
+  // --- Fetch Artist Genres for New Tracks Only ---
   const artistIds = new Set<string>();
-  savedTrackObjects.forEach(item => {
+  newTracks.forEach(item => {
     item.track.artists.forEach(artist => {
       if (artist.id) {
         // Ensure artist object has an ID
@@ -221,34 +279,25 @@ function saveLikedSongsToSheet(): void {
   // --- End Fetch Artist Genres ---
 
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!ss) {
-      console.error(
-        'No active spreadsheet found. Please open or create a spreadsheet.'
-      );
-      return;
-    }
-    const sheetName = 'Spotify Liked Songs';
-    let sheet = ss.getSheetByName(sheetName);
+    // Ensure sheet exists (it might have been created above or already existed)
     if (!sheet) {
       sheet = ss.insertSheet(sheetName);
       console.log(`Created sheet: "${sheetName}"`);
-    } else {
-      console.log(`Using existing sheet: "${sheetName}"`);
+      // Add header row to the new sheet
+      sheet.appendRow(header);
+      lastRow = 1; // Reset lastRow as we just added the header
+    } else if (lastRow === 0) {
+      // Sheet existed but was completely empty
+      sheet.appendRow(header);
+      lastRow = 1;
+    } else if (lastRow === 1 && sheet.getRange(1, 1, 1, header.length).getValues()[0].join('') === '') {
+      // Sheet had one empty row, likely from previous clearing, overwrite with header
+      sheet.getRange(1, 1, 1, header.length).setValues([header]);
     }
+    // else: Sheet exists and has header/data, proceed to append
 
-    // Prepare data for the sheet
-    const header = [
-      'Added At',
-      'Release Date', // Add Release Date header
-      'Track Name',
-      'Artists',
-      'Album Name',
-      'Track ID',
-      'Genres', // Move Genres before Track Link
-      'Track Link',
-    ];
-    const data = savedTrackObjects.map(item => {
+    // Prepare data for the new rows
+    const newData = newTracks.map(item => {
       const track = item.track;
       const artists = track.artists.map(artist => artist.name).join(', ');
       const trackLink = track.external_urls?.spotify || ''; // Get the Spotify URL
@@ -272,17 +321,21 @@ function saveLikedSongsToSheet(): void {
         track.album.name,
         track.id,
         genresString, // Move genres before track link
-        trackLink,
+        trackLink, // Track Link
       ];
     });
 
-    // Clear existing content and write new data
-    sheet.clearContents();
-    const range = sheet.getRange(1, 1, data.length + 1, header.length); // +1 for header row
-    range.setValues([header, ...data]);
-
-    console.log(
-      `Successfully saved ${savedTrackObjects.length} liked songs (with genre info for ${artistGenresMap.size} artists) to sheet "${sheetName}".`
+    // Append new data to the sheet
+    if (newData.length > 0) {
+      // Append rows starting after the last existing row
+      const range = sheet.getRange(lastRow + 1, 1, newData.length, header.length);
+      range.setValues(newData);
+      console.log(
+        `Successfully appended ${newData.length} new liked songs (with genre info for ${artistGenresMap.size} artists) to sheet "${sheetName}".`
+      );
+    } else {
+      // This case should technically be handled by the earlier check, but added for safety.
+      console.log('No new songs were found to append.');
     );
   } catch (e: any) {
     console.error(`Error saving songs to sheet: ${e.message || e}`);
@@ -295,4 +348,4 @@ function saveLikedSongsToSheet(): void {
 (globalThis as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
 (globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs;
-(globalThis as any).saveLikedSongsToSheet = saveLikedSongsToSheet;
+(globalThis as any).updateLikedSongsSheet = updateLikedSongsSheet; // Update global function name
