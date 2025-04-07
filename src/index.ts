@@ -364,11 +364,11 @@ function deleteTriggers(): void {
 }
 
 /**
- * Creates a time-driven trigger to run the updateLikedSongsSheet function weekly.
+ * Creates a time-driven trigger to run the updateLikedSongsSheet function daily.
  * It first deletes any existing triggers for the same function to avoid duplicates.
  * Run this function once from the Apps Script editor to set up the automatic updates.
  */
-function createWeeklyTrigger(): void {
+function createDailyTrigger(): void {
   // Delete existing triggers for the target function to prevent duplicates
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(trigger => {
@@ -380,16 +380,16 @@ function createWeeklyTrigger(): void {
     }
   });
 
-  // Create a new trigger to run weekly
+  // Create a new trigger to run daily
   ScriptApp.newTrigger(TRIGGER_FUNCTION_NAME)
     .timeBased()
-    .everyWeeks(1)
+    .everyDays(1) // Change from everyWeeks(1) to everyDays(1)
     .atHour(3) // Run around 3 AM (adjust as needed)
     .nearMinute(0) // Run near the start of the hour
     .create();
 
   console.log(
-    `Successfully created weekly trigger for ${TRIGGER_FUNCTION_NAME}.`
+    `Successfully created daily trigger for ${TRIGGER_FUNCTION_NAME}.` // Update log message
   );
 }
 
@@ -400,5 +400,5 @@ function createWeeklyTrigger(): void {
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
 (globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs;
 (globalThis as any).updateLikedSongsSheet = updateLikedSongsSheet;
-(globalThis as any).createWeeklyTrigger = createWeeklyTrigger; // Expose trigger creation function
+(globalThis as any).createDailyTrigger = createDailyTrigger; // Expose trigger creation function (renamed)
 (globalThis as any).deleteTriggers = deleteTriggers; // Expose trigger deletion function
