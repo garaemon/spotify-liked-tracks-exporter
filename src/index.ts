@@ -336,7 +336,7 @@ function updateLikedSongsSheet(): void {
     } else {
       // This case should technically be handled by the earlier check, but added for safety.
       console.log('No new songs were found to append.');
-    );
+    }
   } catch (e: any) {
     console.error(`Error saving songs to sheet: ${e.message || e}`);
   }
