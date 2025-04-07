@@ -323,22 +323,19 @@ function updateLikedSongsSheet(): void {
       ];
     });
 
-    // Append new data to the sheet
+    // Insert new data into the sheet after the header row
     if (newData.length > 0) {
-      // Append rows starting after the last existing row
-      const range = sheet.getRange(
-        lastRow + 1,
-        1,
-        newData.length,
-        header.length
-      );
+      // Insert rows right after the header (row 1)
+      sheet.insertRowsAfter(1, newData.length);
+      // Get the range for the newly inserted rows (starting at row 2)
+      const range = sheet.getRange(2, 1, newData.length, header.length);
       range.setValues(newData);
       console.log(
-        `Successfully appended ${newData.length} new liked songs (with genre info for ${artistGenresMap.size} artists) to sheet "${sheetName}".`
+        `Successfully inserted ${newData.length} new liked songs at the top of sheet "${sheetName}" (with genre info for ${artistGenresMap.size} artists).`
       );
     } else {
       // This case should technically be handled by the earlier check, but added for safety.
-      console.log('No new songs were found to append.');
+      console.log('No new songs were found to insert.');
     }
   } catch (e: any) {
     console.error(`Error saving songs to sheet: ${e.message || e}`);
