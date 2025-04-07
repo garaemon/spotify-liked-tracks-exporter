@@ -23,7 +23,8 @@ import {
   isSpotifyAuthorized,
   getMySpotifyProfile,
   getMySavedTracks, // Keep for logMyRecentLikedSongs
-  getAllMySavedTracks, // Import the new function for all tracks
+  getAllMySavedTracks, // Keep for potential full sync needs? Or remove if unused.
+  getNewSavedTracks, // Import the function to get only new tracks
   getArtistsDetails,
 } from './spotify-service';
 
@@ -205,25 +206,14 @@ function updateLikedSongsSheet(): void {
     // Sheet will be created later if new tracks are found
   }
 
-  // --- Fetch All Liked Songs from Spotify ---
-  console.log('Fetching all liked songs from Spotify...');
-  const allSavedTrackObjects = getAllMySavedTracks();
+  // --- Fetch Only New Liked Songs from Spotify ---
+  const newTracks = getNewSavedTracks(existingTrackIds);
 
-  if (allSavedTrackObjects === null) {
-    // Check for null explicitly as empty array is valid
-    console.error('Failed to fetch liked songs.');
+  if (newTracks === null) {
+    // Check for null explicitly (indicates an API error)
+    console.error('Failed to fetch new liked songs due to an error.');
     return;
   }
-
-  if (allSavedTrackObjects.length === 0) {
-    console.log('No liked songs found on Spotify.');
-    return;
-  }
-
-  // --- Filter for New Tracks ---
-  const newTracks = allSavedTrackObjects.filter(
-    item => !existingTrackIds.has(item.track.id)
-  );
 
   if (newTracks.length === 0) {
     console.log('No new liked songs found since the last update.');
