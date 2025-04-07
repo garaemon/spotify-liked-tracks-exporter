@@ -261,3 +261,75 @@ export function getMySavedTracks(limit = 10): SpotifySavedTrackObject[] | null {
   );
   return response ? response.items : null;
 }
+
+/**
+ * Fetches *all* of the current user's saved (liked) tracks from Spotify by handling pagination.
+ * @returns {SpotifySavedTrackObject[] | null} An array of all saved track objects or null on failure.
+ */
+export function getAllMySavedTracks(): SpotifySavedTrackObject[] | null {
+  let allTracks: SpotifySavedTrackObject[] = [];
+  let nextUrl: string | null = `https://api.spotify.com/v1/me/tracks?limit=50`; // Start with the initial endpoint
+
+  console.log('Fetching all saved tracks (may take time)...');
+
+  while (nextUrl) {
+    const service = getSpotifyService();
+    if (!service.hasAccess()) {
+      console.error('Not authorized with Spotify during pagination.');
+      return null;
+    }
+
+    const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      headers: {
+        Authorization: `Bearer ${service.getAccessToken()}`,
+      },
+      method: 'get',
+      muteHttpExceptions: true,
+    };
+
+    console.log(`Fetching page: ${nextUrl}`);
+    const response = UrlFetchApp.fetch(nextUrl, requestOptions);
+    const responseCode = response.getResponseCode();
+    const responseBody = response.getContentText();
+
+    if (responseCode === 200) {
+      try {
+        const pageData = JSON.parse(responseBody) as SpotifySavedTracksResponse;
+        if (pageData.items) {
+          allTracks = allTracks.concat(pageData.items);
+        }
+        nextUrl = pageData.next; // Get the URL for the next page
+        // Optional: Add a small delay to avoid hitting rate limits aggressively
+        if (nextUrl) {
+          Utilities.sleep(200); // Sleep for 200 milliseconds
+        }
+      } catch (e) {
+        console.error(
+          `Failed to parse Spotify response during pagination: ${e}\nResponse: ${responseBody}`
+        );
+        return null; // Stop fetching on parse error
+      }
+    } else if (responseCode === 401) {
+      console.error(
+        `Spotify API Error (Unauthorized) during pagination: ${responseCode} ${responseBody}`
+      );
+      resetSpotifyService();
+      return null; // Stop fetching on auth error
+    } else if (responseCode === 429) {
+      // Rate limit hit, wait and retry might be complex in Apps Script. Log and stop for now.
+      console.error(
+        `Spotify API Rate Limit Hit: ${responseCode} ${responseBody}. Please try again later.`
+      );
+      // Implement backoff strategy if needed
+      return null;
+    } else {
+      console.error(
+        `Spotify API Error during pagination: ${responseCode} ${responseBody}`
+      );
+      return null; // Stop fetching on other errors
+    }
+  }
+
+  console.log(`Finished fetching. Total tracks found: ${allTracks.length}`);
+  return allTracks;
+}
