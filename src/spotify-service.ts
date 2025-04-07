@@ -271,7 +271,7 @@ export function getMySavedTracks(limit = 10): SpotifySavedTrackObject[] | null {
 export function getNewSavedTracks(
   existingTrackIds: Set<string>
 ): SpotifySavedTrackObject[] | null {
-  let newTracks: SpotifySavedTrackObject[] = [];
+  const newTracks: SpotifySavedTrackObject[] = [];
   let nextUrl: string | null = `https://api.spotify.com/v1/me/tracks?limit=50`; // Start with the initial endpoint
   let foundExistingTrack = false;
 
