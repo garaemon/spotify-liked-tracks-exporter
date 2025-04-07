@@ -179,7 +179,8 @@ function updateLikedSongsSheet(): void {
     console.log(`Reading existing tracks from sheet: "${sheetName}"`);
     const data = sheet.getDataRange().getValues();
     lastRow = data.length; // Get the last row number
-    if (lastRow > 1) { // Check if there's data beyond the header
+    if (lastRow > 1) {
+      // Check if there's data beyond the header
       const trackIdColumnIndex = header.indexOf('Track ID'); // Find the index of the Track ID column
       if (trackIdColumnIndex !== -1) {
         // Start from 1 to skip header row
@@ -188,9 +189,13 @@ function updateLikedSongsSheet(): void {
             existingTrackIds.add(data[i][trackIdColumnIndex].toString());
           }
         }
-        console.log(`Found ${existingTrackIds.size} existing track IDs in the sheet.`);
+        console.log(
+          `Found ${existingTrackIds.size} existing track IDs in the sheet.`
+        );
       } else {
-        console.warn('Could not find "Track ID" column in the sheet. Assuming no existing tracks.');
+        console.warn(
+          'Could not find "Track ID" column in the sheet. Assuming no existing tracks.'
+        );
       }
     } else {
       console.log('Sheet exists but is empty or only has a header.');
@@ -290,7 +295,10 @@ function updateLikedSongsSheet(): void {
       // Sheet existed but was completely empty
       sheet.appendRow(header);
       lastRow = 1;
-    } else if (lastRow === 1 && sheet.getRange(1, 1, 1, header.length).getValues()[0].join('') === '') {
+    } else if (
+      lastRow === 1 &&
+      sheet.getRange(1, 1, 1, header.length).getValues()[0].join('') === ''
+    ) {
       // Sheet had one empty row, likely from previous clearing, overwrite with header
       sheet.getRange(1, 1, 1, header.length).setValues([header]);
     }
@@ -328,7 +336,12 @@ function updateLikedSongsSheet(): void {
     // Append new data to the sheet
     if (newData.length > 0) {
       // Append rows starting after the last existing row
-      const range = sheet.getRange(lastRow + 1, 1, newData.length, header.length);
+      const range = sheet.getRange(
+        lastRow + 1,
+        1,
+        newData.length,
+        header.length
+      );
       range.setValues(newData);
       console.log(
         `Successfully appended ${newData.length} new liked songs (with genre info for ${artistGenresMap.size} artists) to sheet "${sheetName}".`
