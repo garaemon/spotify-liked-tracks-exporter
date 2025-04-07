@@ -342,10 +342,63 @@ function updateLikedSongsSheet(): void {
   }
 }
 
+// --- Trigger Management ---
+
+const TRIGGER_FUNCTION_NAME = 'updateLikedSongsSheet';
+
+/**
+ * Deletes all existing triggers associated with this script project.
+ * Run this from the Apps Script editor if you need to remove old triggers.
+ */
+function deleteTriggers(): void {
+  const triggers = ScriptApp.getProjectTriggers();
+  if (triggers.length === 0) {
+    console.log('No triggers found for this project.');
+    return;
+  }
+  triggers.forEach(trigger => {
+    ScriptApp.deleteTrigger(trigger);
+    console.log(`Deleted trigger with ID: ${trigger.getUniqueId()}`);
+  });
+  console.log(`Deleted ${triggers.length} trigger(s).`);
+}
+
+/**
+ * Creates a time-driven trigger to run the updateLikedSongsSheet function daily.
+ * It first deletes any existing triggers for the same function to avoid duplicates.
+ * Run this function once from the Apps Script editor to set up the automatic updates.
+ */
+function createDailyTrigger(): void {
+  // Delete existing triggers for the target function to prevent duplicates
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === TRIGGER_FUNCTION_NAME) {
+      ScriptApp.deleteTrigger(trigger);
+      console.log(
+        `Deleted existing trigger for ${TRIGGER_FUNCTION_NAME} (ID: ${trigger.getUniqueId()})`
+      );
+    }
+  });
+
+  // Create a new trigger to run daily
+  ScriptApp.newTrigger(TRIGGER_FUNCTION_NAME)
+    .timeBased()
+    .everyDays(1) // Change from everyWeeks(1) to everyDays(1)
+    .atHour(3) // Run around 3 AM (adjust as needed)
+    .nearMinute(0) // Run near the start of the hour
+    .create();
+
+  console.log(
+    `Successfully created daily trigger for ${TRIGGER_FUNCTION_NAME}.` // Update log message
+  );
+}
+
 // --- Expose functions to Apps Script Editor ---
 // These assignments make the functions visible and runnable directly from the Apps Script UI.
 (globalThis as any).authorizeSpotify = authorizeSpotify;
 (globalThis as any).resetSpotifyAuthorization = resetSpotifyAuthorization;
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
 (globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs;
-(globalThis as any).updateLikedSongsSheet = updateLikedSongsSheet; // Update global function name
+(globalThis as any).updateLikedSongsSheet = updateLikedSongsSheet;
+(globalThis as any).createDailyTrigger = createDailyTrigger; // Expose trigger creation function (renamed)
+(globalThis as any).deleteTriggers = deleteTriggers; // Expose trigger deletion function
