@@ -23,6 +23,7 @@ const SPOTIFY_SCOPES = [
   'user-read-private',
   'user-read-email',
   'user-library-read', // Add scope to read user's saved tracks
+  'user-follow-read', // Add scope to read user's followed artists
   // Add other scopes like 'playlist-read-private', etc.
 ].join(' ');
 
@@ -170,6 +171,7 @@ interface SpotifyArtist {
   id: string; // Artist ID is needed to fetch genres
   name: string;
   genres?: string[]; // Genres associated with the artist (optional)
+  external_urls?: SpotifyExternalUrls; // Add external URLs for the artist URL
   // Add other artist fields if needed
   // https://developer.spotify.com/documentation/web-api/reference/get-artist
 }
@@ -421,4 +423,81 @@ export function getAllMySavedTracks(): SpotifySavedTrackObject[] | null {
 
   console.log(`Finished fetching. Total tracks found: ${allTracks.length}`);
   return allTracks;
+}
+
+// Add a function to fetch followed artists
+interface SpotifyFollowedArtistsResponse {
+  artists: {
+    items: SpotifyArtist[];
+    next: string | null;
+    total: number;
+  };
+}
+
+/**
+ * Fetches the current user's followed artists from Spotify.
+ * Handles pagination to retrieve all followed artists.
+ * @returns {SpotifyArtist[] | null} An array of followed artist objects or null on failure.
+ */
+export function getFollowedArtists(): SpotifyArtist[] | null {
+  let allArtists: SpotifyArtist[] = [];
+  let nextUrl: string | null =
+    `https://api.spotify.com/v1/me/following?type=artist&limit=50`;
+
+  console.log('Fetching all followed artists (may take time)...');
+
+  while (nextUrl) {
+    const service = getSpotifyService();
+    if (!service.hasAccess()) {
+      console.error('Not authorized with Spotify during pagination.');
+      return null;
+    }
+
+    const requestOptions: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      headers: {
+        Authorization: `Bearer ${service.getAccessToken()}`,
+      },
+      method: 'get',
+      muteHttpExceptions: true,
+    };
+
+    console.log(`Fetching page: ${nextUrl}`);
+    const response = UrlFetchApp.fetch(nextUrl, requestOptions);
+    const responseCode = response.getResponseCode();
+    const responseBody = response.getContentText();
+
+    if (responseCode === 200) {
+      try {
+        const pageData = JSON.parse(
+          responseBody
+        ) as SpotifyFollowedArtistsResponse;
+        if (pageData.artists.items) {
+          allArtists = allArtists.concat(pageData.artists.items);
+        }
+        nextUrl = pageData.artists.next; // Get the URL for the next page
+        if (nextUrl) {
+          Utilities.sleep(200); // Sleep for 200 milliseconds
+        }
+      } catch (e) {
+        console.error(
+          `Failed to parse Spotify response during pagination: ${e}\nResponse: ${responseBody}`
+        );
+        return null;
+      }
+    } else if (responseCode === 401) {
+      console.error(
+        `Spotify API Error (Unauthorized) during pagination: ${responseCode} ${responseBody}`
+      );
+      resetSpotifyService();
+      return null;
+    } else {
+      console.error(
+        `Spotify API Error during pagination: ${responseCode} ${responseBody}`
+      );
+      return null;
+    }
+  }
+
+  console.log(`Finished fetching. Total artists found: ${allArtists.length}`);
+  return allArtists;
 }
