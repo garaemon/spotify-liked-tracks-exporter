@@ -26,6 +26,7 @@ import {
   getAllMySavedTracks, // Keep for potential full sync needs? Or remove if unused.
   getNewSavedTracks, // Import the function to get only new tracks
   getArtistsDetails,
+  getFollowedArtists, // Import the function to get followed artists
 } from './spotify-service';
 
 // --- Authorization ---
@@ -342,9 +343,155 @@ function updateLikedSongsSheet(): void {
   }
 }
 
+/**
+ * Updates a Google Sheet with the user's followed artists from Spotify.
+ * Creates a sheet named "Spotify Followed Artists" if it doesn't exist.
+ */
+function updateFollowedArtistsSheet(): void {
+  if (!isSpotifyAuthorized()) {
+    console.error(
+      'Not authorized. Please run authorizeSpotify() first and follow the instructions.'
+    );
+    return;
+  }
+
+  // --- Get Existing Artist IDs from Sheet ---
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    console.error(
+      'No active spreadsheet found. Please open or create a spreadsheet.'
+    );
+    return;
+  }
+  const sheetName = 'Spotify Followed Artists';
+  let sheet = ss.getSheetByName(sheetName);
+  const existingArtistIds = new Set<string>();
+  const header = ['Artist Name', 'Genres', 'Artist ID', 'Spotify URL'];
+  let lastRow = 0;
+
+  if (sheet) {
+    console.log(`Reading existing artists from sheet: "${sheetName}"`);
+    const data = sheet.getDataRange().getValues();
+    lastRow = data.length; // Get the last row number
+    if (lastRow > 1) {
+      // Check if there's data beyond the header
+      const artistIdColumnIndex = header.indexOf('Artist ID'); // Find the index of the Artist ID column
+      if (artistIdColumnIndex !== -1) {
+        // Start from 1 to skip header row
+        for (let i = 1; i < data.length; i++) {
+          if (data[i] && data[i][artistIdColumnIndex]) {
+            existingArtistIds.add(data[i][artistIdColumnIndex].toString());
+          }
+        }
+        console.log(
+          `Found ${existingArtistIds.size} existing artist IDs in the sheet.`
+        );
+      } else {
+        console.warn(
+          'Could not find "Artist ID" column in the sheet. Assuming no existing artists.'
+        );
+      }
+    } else {
+      console.log('Sheet exists but is empty or only has a header.');
+    }
+  } else {
+    console.log(`Sheet "${sheetName}" not found. It will be created.`);
+    // Sheet will be created later if new artists are found
+  }
+
+  // --- Fetch Followed Artists from Spotify ---
+  const followedArtists = getFollowedArtists();
+
+  if (followedArtists === null) {
+    // Check for null explicitly (indicates an API error)
+    console.error('Failed to fetch followed artists due to an error.');
+    return;
+  }
+
+  if (followedArtists.length === 0) {
+    console.log('No followed artists found.');
+    return;
+  }
+
+  console.log(`Found ${followedArtists.length} followed artists.`);
+
+  // --- Filter Out Existing Artists ---
+  const newArtists = followedArtists.filter(
+    artist => !existingArtistIds.has(artist.id)
+  );
+
+  if (newArtists.length === 0) {
+    console.log('No new followed artists to add.');
+    return;
+  }
+
+  console.log(`Found ${newArtists.length} new followed artists to add.`);
+
+  try {
+    // Ensure sheet exists (it might have been created above or already existed)
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      console.log(`Created sheet: "${sheetName}"`);
+      // Add header row to the new sheet
+      sheet.appendRow(header);
+      lastRow = 1; // Reset lastRow as we just added the header
+    } else if (lastRow === 0) {
+      // Sheet existed but was completely empty
+      sheet.appendRow(header);
+      lastRow = 1;
+    } else if (
+      lastRow === 1 &&
+      sheet.getRange(1, 1, 1, header.length).getValues()[0].join('') === ''
+    ) {
+      // Sheet had one empty row, likely from previous clearing, overwrite with header
+      sheet.getRange(1, 1, 1, header.length).setValues([header]);
+    }
+    // else: Sheet exists and has header/data, proceed to append
+
+    // Prepare data for the new rows
+    const newData = newArtists.map(artist => {
+      const genres = artist.genres ? artist.genres.join(', ') : '';
+      return [
+        artist.name,
+        genres,
+        artist.id,
+        artist.external_urls?.spotify || '',
+      ];
+    });
+
+    // Insert new data into the sheet after the header row
+    if (newData.length > 0) {
+      // Insert rows right after the header (row 1)
+      sheet.insertRowsAfter(1, newData.length);
+      // Get the range for the newly inserted rows (starting at row 2)
+      const range = sheet.getRange(2, 1, newData.length, header.length);
+      range.setValues(newData);
+      console.log(
+        `Successfully inserted ${newData.length} new followed artists at the top of sheet "${sheetName}".`
+      );
+    } else {
+      // This case should technically be handled by the earlier check, but added for safety.
+      console.log('No new artists were found to insert.');
+    }
+  } catch (e: any) {
+    console.error(`Error saving artists to sheet: ${e.message || e}`);
+  }
+}
+
 // --- Trigger Management ---
 
-const TRIGGER_FUNCTION_NAME = 'updateLikedSongsSheet';
+/**
+ * Main function to be called by triggers.
+ * Updates both liked tracks and followed artists in spreadsheets.
+ */
+function updateAllSpotifyData(): void {
+  console.log('Starting scheduled update of all Spotify data...');
+  updateLikedSongsSheet();
+  updateFollowedArtistsSheet();
+  console.log('Completed scheduled update of all Spotify data.');
+}
+
+const TRIGGER_FUNCTION_NAME = 'updateAllSpotifyData';
 
 /**
  * Deletes all existing triggers associated with this script project.
@@ -400,5 +547,7 @@ function createDailyTrigger(): void {
 (globalThis as any).logMySpotifyProfile = logMySpotifyProfile;
 (globalThis as any).logMyRecentLikedSongs = logMyRecentLikedSongs;
 (globalThis as any).updateLikedSongsSheet = updateLikedSongsSheet;
+(globalThis as any).updateFollowedArtistsSheet = updateFollowedArtistsSheet;
 (globalThis as any).createDailyTrigger = createDailyTrigger; // Expose trigger creation function (renamed)
 (globalThis as any).deleteTriggers = deleteTriggers; // Expose trigger deletion function
+(globalThis as any).updateAllSpotifyData = updateAllSpotifyData;
